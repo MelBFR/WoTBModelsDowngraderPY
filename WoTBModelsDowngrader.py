@@ -1,4 +1,5 @@
 from LoggerErrors import *
+from BinaryReader import *
 
 sc2File = "ST_B1.sc2"
 scgFile = "ST_B1.scg"
@@ -35,9 +36,6 @@ TYPES_COUNT         = 28
 
 SCENE_FILE_CURRENT_VERSION = 40
 SCENE_FILE_MINIMAL_VERSION = 30
-
-def ReadInt(stream, size):
-    return int.from_bytes(stream.read(size), 'little')
 
 def GetKeyHashFromByteArray(dictionaryRes, byteArray):
     return dictionaryRes[1][dictionaryRes[0].index(byteArray)]
