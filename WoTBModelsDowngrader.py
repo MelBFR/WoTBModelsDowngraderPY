@@ -1,5 +1,7 @@
-from LoggerErrors import *
-from BinaryReader import *
+import BinaryReader as BinReader
+import KeyedArchive as KeyedArchive
+import LoggerErrors as Logger
+import VariantType as VariantType
 
 sc2File = "ST_B1.sc2"
 scgFile = "ST_B1.scg"
@@ -45,15 +47,15 @@ def GetByteArrayFromKeyHash(dictionaryRes, keyHash):
 def TryReadGeometryFile(scgStream):
     headerSignature = scgStream.read(4)
     if headerSignature != b'SCPG':
-        LoggerErrorV("Wrong HeaderGeom Signature", headerSignature)
+        Logger.Error("Wrong HeaderGeom Signature", headerSignature)
         
-    headerVersion = ReadInt(scgStream, 4)
+    headerVersion = BinReader.ReadInt(scgStream, 4)
     if headerVersion != 1:
-        LoggerErrorV("Wrong HeaderGeom Version != 1", headerVersion)
+        Logger.Error("Wrong HeaderGeom Version != 1", headerVersion)
 
-    headerPolyNum = ReadInt(scgStream, 4)
-    if headerPolyNum != ReadInt(scgStream, 4):
-        LoggerError("Wrong HeaderGeom Number of PolygonGroup Nodes")
+    headerPolyNum = BinReader.ReadInt(scgStream, 4)
+    if headerPolyNum != BinReader.ReadInt(scgStream, 4):
+        Logger.Error("Wrong HeaderGeom Number of PolygonGroup Nodes")
 
     polygonGroups = scgStream.read()
     return polygonGroups
@@ -64,47 +66,22 @@ def ReadSCG(scgStream):
 def TryReadSceneHeader(sc2Stream):
     headerSignature = sc2Stream.read(4)
     if headerSignature != b'SFV2':
-        LoggerErrorV("Wrong Header Signature:", headerSignature)
+        Logger.Error("Wrong Header Signature:", headerSignature)
         
-    headerVersion = ReadInt(sc2Stream, 4)
+    headerVersion = BinReader.ReadInt(sc2Stream, 4)
     if headerVersion > SCENE_FILE_CURRENT_VERSION:
-        LoggerErrorV("Unsupported:", SCENE_FILE_CURRENT_VERSION)
+        Logger.Error("Unsupported:", SCENE_FILE_CURRENT_VERSION)
     elif headerVersion < SCENE_FILE_MINIMAL_VERSION:
-        LoggerErrorV("Unsupported:", SCENE_FILE_MINIMAL_VERSION)
+        Logger.Error("Unsupported:", SCENE_FILE_MINIMAL_VERSION)
 
-    headerNodeNum = ReadInt(sc2Stream, 4)
+    headerNodeNum = BinReader.ReadInt(sc2Stream, 4)
     if headerNodeNum == 0:
-        LoggerError("Wrong Number of Hierarchy Nodes == 0")
+        Logger.Error("Wrong Number of Hierarchy Nodes == 0")
 
     return headerNodeNum
 
 def TryReadDescriptor(sc2Stream):
     return sc2Stream.read(24)
-
-def TryReadDictionary(sc2Stream):
-    archiveSignature = sc2Stream.read(2)
-    if archiveSignature != b'KA':
-        LoggerError("Wrong Dictionary Archive Signature")
-
-    archiveVersion = ReadInt(sc2Stream, 2)
-    if archiveVersion != 0x0002:
-        LoggerError("Wrong Dictionary Archive Version")
-
-    archiveItemsCount = ReadInt(sc2Stream, 4)
-    if archiveItemsCount == 0:
-        LoggerError("Dictionary Archive is Empty == 0")
-
-    dictionaryKeys = []
-    dictionaryHash = []
-
-    for i in range(archiveItemsCount):
-        stringLen = ReadInt(sc2Stream, 2)
-        dictionaryKeys.append(sc2Stream.read(stringLen))
-
-    for i in range(archiveItemsCount):
-        dictionaryHash.append(sc2Stream.read(4))
-    
-    return [dictionaryKeys, dictionaryHash]
 
 def TryReadVariantVector(keyToFind, dictionaryRes, sc2Stream):
     keyHash = GetKeyHashFromByteArray(dictionaryRes, keyToFind)
@@ -114,19 +91,18 @@ def TryReadVariantVector(keyToFind, dictionaryRes, sc2Stream):
         currPos += 1
         sc2Stream.seek(currPos)
 
-    varType = ReadInt(sc2Stream, 1)
-    if varType != TYPE_VARIANT_VECTOR:
-        LoggerErrorV("Wrong Type Found:", varType)
-
-    itemsCount = ReadInt(sc2Stream, 4)
+    variantTypeList = VariantType.Read(sc2Stream, dictionaryRes)
+    return variantTypeList
 
 def ReadSC2(sc2Stream):
     headerNodeNum = TryReadSceneHeader(sc2Stream)
     descriptorBuf = TryReadDescriptor(sc2Stream)
-    dictionaryRes = TryReadDictionary(sc2Stream)
+    dictionaryRes = KeyedArchive.LoadDictionary(sc2Stream)
 
     dataNodesList = TryReadVariantVector(b"#dataNodes", dictionaryRes, sc2Stream)
-    return True
+    hierarchyList = TryReadVariantVector(b"#hierarchy", dictionaryRes, sc2Stream)
+
+    return [dataNodesList, hierarchyList]
 
 def DowngradeModel():
     scgStream = open(scgFile, "rb+")
@@ -135,4 +111,5 @@ def DowngradeModel():
     polygonGroups = ReadSCG(scgStream)
     returnedValue = ReadSC2(sc2Stream)
 
-DowngradeModel()
+if __name__ == '__main__':
+    DowngradeModel()
