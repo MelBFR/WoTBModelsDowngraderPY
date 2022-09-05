@@ -4,7 +4,8 @@ import LoggerErrors as Logger
 import VariantType as VariantType
 
 sc2File = "ST_B1.sc2"
-scgFile = "ST_B1.scg"
+scgFile = sc2File.replace(".sc2", ".scg")
+outFile = sc2File.replace(".sc2", "_res.sc2")
 
 TYPE_NONE           =  0
 TYPE_BOOLEAN        =  1
@@ -38,6 +39,9 @@ TYPES_COUNT         = 28
 
 SCENE_FILE_CURRENT_VERSION = 40
 SCENE_FILE_MINIMAL_VERSION = 30
+SCENE_FILE_REBUILD_VERSION = 24
+
+DESCRIPTOR_BUFFER = bytes([0x4b, 0x41, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
 
 def GetKeyHashFromByteArray(dictionaryRes, byteArray):
     return dictionaryRes[1][dictionaryRes[0].index(byteArray)]
@@ -91,7 +95,16 @@ def TryReadVariantVector(keyToFind, dictionaryRes, sc2Stream):
         currPos += 1
         sc2Stream.seek(currPos)
 
-    variantTypeList = VariantType.Read(sc2Stream, dictionaryRes)
+    variantTypeList = []
+
+    # Storing as a List instead of BytesArray
+    if BinReader.ReadInt(sc2Stream, 1) != TYPE_VARIANT_VECTOR:
+        Logger.Error("DVASSERT: TYPE_VARIANT_VECTOR")
+
+    variantNum = BinReader.ReadInt(sc2Stream, 4)
+    for k in range(variantNum):
+        variantTypeList.append(VariantType.Read(sc2Stream, dictionaryRes))
+
     return variantTypeList
 
 def ReadSC2(sc2Stream):
@@ -104,12 +117,31 @@ def ReadSC2(sc2Stream):
 
     return [dataNodesList, hierarchyList]
 
+def CreateSceneHeader(outStream, receivedNodes):
+    outStream.write(b"SFV2" + SCENE_FILE_REBUILD_VERSION.to_bytes(4, 'little'))
+    outStream.write(len(receivedNodes[1]).to_bytes(4, 'little') + DESCRIPTOR_BUFFER)
+
+def CreateSceneFile(receivedNodes, polygonGroups):
+    outStream = open(outFile, "wb")
+    CreateSceneHeader(outStream, receivedNodes)
+    dataNodesNum = len(receivedNodes[0]) + polygonGroups.count(b"PolygonGroup")
+    outStream.write(dataNodesNum.to_bytes(4, 'little'))
+
+    outStream.write(polygonGroups)
+    for eachNode in receivedNodes[0]:
+        outStream.write(eachNode)
+    for eachNode in receivedNodes[1]:
+        outStream.write(eachNode)
+    outStream.close()
+
 def DowngradeModel():
     scgStream = open(scgFile, "rb+")
     sc2Stream = open(sc2File, "rb+")
     
     polygonGroups = ReadSCG(scgStream)
-    returnedValue = ReadSC2(sc2Stream)
+    receivedNodes = ReadSC2(sc2Stream)
+
+    CreateSceneFile(receivedNodes, polygonGroups)
 
 if __name__ == '__main__':
     DowngradeModel()
