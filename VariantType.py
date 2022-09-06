@@ -3,7 +3,7 @@ import LoggerErrors as Logger
 import WoTBModelsDowngrader as Downgrader
 
 # We process no data, We want to Return ByteArrays
-def Read(sc2Stream, dictionaryRes = None):
+def Read(sc2Stream, dictionaryRes = None, isNode = False):
 
     varTypeB = sc2Stream.read(1)
     varType = int.from_bytes(varTypeB, 'little')
@@ -36,14 +36,18 @@ def Read(sc2Stream, dictionaryRes = None):
         data = sc2Stream.read(4)
 
     elif varType == Downgrader.TYPE_KEYED_ARCHIVE:
-        archiveSize = sc2Stream.read(4)
+        oldArchiveSize = sc2Stream.read(4)
         if dictionaryRes != None:
             stringMap = KeyedArchive.Load(sc2Stream, dictionaryRes)
         else:
             stringMap = KeyedArchive.Load(sc2Stream)
+
         data = b'KA'+(0x0001).to_bytes(2, 'little')+len(stringMap).to_bytes(4, 'little')
         for k in range(len(stringMap)):
             data += stringMap[k][0] + stringMap[k][1]
+            
+        if not isNode:
+            data = len(data).to_bytes(4, 'little') + data
 
     elif varType == Downgrader.TYPE_INT64:
         data = sc2Stream.read(8)
@@ -106,9 +110,8 @@ def Read(sc2Stream, dictionaryRes = None):
         Logger.Error("TYPE_UNKNOWN is Disabled", varType)
 
     elif varType == Downgrader.TYPE_VARIANT_VECTOR:
-        variantNumB = sc2Stream.read(4)
-        variantNum = int.from_bytes(variantNumB, 'little')
-        data = variantNumB
+        data = sc2Stream.read(4)
+        variantNum = int.from_bytes(data, 'little')
         for k in range (variantNum):
             if dictionaryRes != None:
                 data += Read(sc2Stream, dictionaryRes)
@@ -116,7 +119,9 @@ def Read(sc2Stream, dictionaryRes = None):
                 data += Read(sc2Stream)
     
     else:
-        Logger.Error("WRONG TYPE FOUND, PLEASE ADD IT:", varType)
+        Logger.Error("WRONG TYPE FOUND, PLEASE ADD IT:", varType, sc2Stream.tell())
 
-    return varTypeB + data
+    if not isNode:
+        return varTypeB + data
+    return data
 

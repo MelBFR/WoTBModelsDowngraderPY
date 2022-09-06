@@ -103,7 +103,7 @@ def TryReadVariantVector(keyToFind, dictionaryRes, sc2Stream):
 
     variantNum = BinReader.ReadInt(sc2Stream, 4)
     for k in range(variantNum):
-        variantTypeList.append(VariantType.Read(sc2Stream, dictionaryRes))
+        variantTypeList.append(VariantType.Read(sc2Stream, dictionaryRes, True))
 
     return variantTypeList
 
