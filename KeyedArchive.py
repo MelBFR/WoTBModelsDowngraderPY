@@ -36,7 +36,7 @@ def Load(sc2Stream, dictionaryRes):
     # In case of Empty Archives
     archiveVersion = BinReader.ReadInt(sc2Stream, 2)
     if archiveVersion == 0xFF02:
-        return True
+        return []
 
     # In case of Others Archives
     archiveItemNum = BinReader.ReadInt(sc2Stream, 4)
