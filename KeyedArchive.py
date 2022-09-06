@@ -28,6 +28,8 @@ def LoadDictionary(sc2Stream):
     
     return [dictionaryKeys, dictionaryHash]
 
+# While Downgrading Models, Only StringMap Exists !
+# So we Return a StringMap Version of Keyed Archive
 def Load(sc2Stream, dictionaryRes):
     archiveSignature = sc2Stream.read(2)
     if archiveSignature != b'KA':
@@ -45,12 +47,9 @@ def Load(sc2Stream, dictionaryRes):
 
     # In case of Hashed Strings Archives
     if archiveVersion == 0x0102:
-        # While Downgrading Models, Only StringMap Exists !
-        # So we Return a StringMap Version of Keyed Archive
         stringMapArchive = []
         for i in range(archiveItemNum):
             variantKey = Downgrader.GetByteArrayFromKeyHash(dictionaryRes, sc2Stream.read(4))
-            # ByteArray(Str) -> VariantType ByteArray(Str)
             variantKey = bytes([Downgrader.TYPE_STRING]) + len(variantKey).to_bytes(4, 'little') + variantKey
             variantObj = VariantType.Read(sc2Stream, dictionaryRes)
             stringMapArchive.append([variantKey, variantObj])
@@ -66,5 +65,13 @@ def Load(sc2Stream, dictionaryRes):
             stringMapArchive.append([variantKey, variantObj])
 
         return stringMapArchive
+        
+    Logger.Error("Wrong Archive Version:", archiveVersion, sc2Stream.tell())
 
-    
+def CreateArchiveFromStringMap(stringMap, isNode):
+    archive = b'KA'+(0x0001).to_bytes(2, 'little')+len(stringMap).to_bytes(4, 'little')
+    for k in range(len(stringMap)):
+        archive += stringMap[k][0] + stringMap[k][1]
+    if not isNode:
+        archive = len(archive).to_bytes(4, 'little') + archive
+    return archive

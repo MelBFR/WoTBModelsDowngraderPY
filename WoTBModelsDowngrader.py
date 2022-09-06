@@ -87,44 +87,24 @@ def TryReadSceneHeader(sc2Stream):
 def TryReadDescriptor(sc2Stream):
     return sc2Stream.read(24)
 
-def TryReadVariantVector(keyToFind, dictionaryRes, sc2Stream):
-    keyHash = GetKeyHashFromByteArray(dictionaryRes, keyToFind)
-    currPos = sc2Stream.tell()
-
-    while sc2Stream.read(4) != keyHash:
-        currPos += 1
-        sc2Stream.seek(currPos)
-
-    variantTypeList = []
-
-    # Storing as a List instead of BytesArray
-    if BinReader.ReadInt(sc2Stream, 1) != TYPE_VARIANT_VECTOR:
-        Logger.Error("DVASSERT: TYPE_VARIANT_VECTOR")
-
-    variantNum = BinReader.ReadInt(sc2Stream, 4)
-    for k in range(variantNum):
-        variantTypeList.append(VariantType.Read(sc2Stream, dictionaryRes, True))
-
-    return variantTypeList
-
 def ReadSC2(sc2Stream):
     headerNodeNum = TryReadSceneHeader(sc2Stream)
     descriptorBuf = TryReadDescriptor(sc2Stream)
     dictionaryRes = KeyedArchive.LoadDictionary(sc2Stream)
 
-    dataNodesList = TryReadVariantVector(b"#dataNodes", dictionaryRes, sc2Stream)
-    hierarchyList = TryReadVariantVector(b"#hierarchy", dictionaryRes, sc2Stream)
+    dataNodes = VariantType.GetVariantVector(b"#dataNodes", sc2Stream, dictionaryRes)
+    hierarchy = VariantType.GetVariantVector(b"#hierarchy", sc2Stream, dictionaryRes)
 
-    return [dataNodesList, hierarchyList]
+    return [dataNodes, hierarchy]
 
-def CreateSceneHeader(outStream, receivedNodes):
-    outStream.write(b"SFV2" + SCENE_FILE_REBUILD_VERSION.to_bytes(4, 'little'))
-    outStream.write(len(receivedNodes[1]).to_bytes(4, 'little') + DESCRIPTOR_BUFFER)
-
-def CreateSceneFile(receivedNodes, polygonGroups):
-    outStream = open(outFile, "wb")
-    CreateSceneHeader(outStream, receivedNodes)
-    dataNodesNum = len(receivedNodes[0]) + polygonGroups.count(b"PolygonGroup")
+def CreateSceneFile(outStream, receivedNodes, polygonGroups):
+    polygonsGNum = polygonGroups.count(b"PolygonGroup")
+    dataNodesNum = polygonsGNum + len(receivedNodes[0])
+    
+    outStream.write(b"SFV2")
+    outStream.write(SCENE_FILE_REBUILD_VERSION.to_bytes(4, 'little'))
+    outStream.write(len(receivedNodes[1]).to_bytes(4, 'little'))
+    outStream.write(DESCRIPTOR_BUFFER)
     outStream.write(dataNodesNum.to_bytes(4, 'little'))
 
     outStream.write(polygonGroups)
@@ -141,7 +121,9 @@ def DowngradeModel():
     polygonGroups = ReadSCG(scgStream)
     receivedNodes = ReadSC2(sc2Stream)
 
-    CreateSceneFile(receivedNodes, polygonGroups)
+    outStream = open(outFile, "wb")
+
+    CreateSceneFile(outStream, receivedNodes, polygonGroups)
 
 if __name__ == '__main__':
     DowngradeModel()
