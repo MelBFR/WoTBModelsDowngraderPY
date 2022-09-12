@@ -1,9 +1,19 @@
+import BinaryFile as BinFile
 import KeyedArchive as KeyedArchive
-import BinaryReader as BinReader
 import LoggerErrors as Logger
 import WoTBModelsDowngrader as Downgrader
 
-# We process no data, We want to Return ByteArrays
+def AsString(byteArray):
+    return bytes([Downgrader.TYPE_STRING]) + len(byteArray).to_bytes(4, 'little') + byteArray
+
+def AsInt32(number):
+    if type(number) == int:
+        return bytes([Downgrader.TYPE_INT32]) + number.to_bytes(4, 'little')
+    elif type(number) == bytes:
+        return bytes([Downgrader.TYPE_INT32]) + number
+    else:
+        Logger.Error("Wrong number type:", type(number))
+
 def Read(sc2Stream, dictionaryRes = None, isNode = False):
 
     varTypeB = sc2Stream.read(1)
@@ -42,7 +52,22 @@ def Read(sc2Stream, dictionaryRes = None, isNode = False):
             stringMap = KeyedArchive.Load(sc2Stream, dictionaryRes)
         else:
             stringMap = KeyedArchive.Load(sc2Stream)
+
+        hierarchyData = None
+        if Downgrader.HIERARCHY_SUPPORT:
+            for eachObjMap in stringMap:
+                if AsString(b"#hierarchy") in eachObjMap:
+                    hierarchyData = eachObjMap[1]
+                    eachObjMap[0] = AsString(b"#childrenCount")
+                    eachObjMap[1] = AsInt32(eachObjMap[1][1:5])
         data = KeyedArchive.CreateArchiveFromStringMap(stringMap, isNode)
+        if hierarchyData != None:
+            mem = BinFile.WriteBufferForLoadData("child.bin", hierarchyData)
+            mem.read(1)
+            for k in range(BinFile.ReadInt(mem, 4)):
+                mem.read(1)
+                data += mem.read(BinFile.ReadInt(mem, 4))
+            mem.close()
 
     elif varType == Downgrader.TYPE_INT64:
         data = sc2Stream.read(8)
@@ -114,7 +139,7 @@ def Read(sc2Stream, dictionaryRes = None, isNode = False):
                 data += Read(sc2Stream)
     
     else:
-        Logger.Error("WRONG TYPE FOUND, PLEASE ADD IT:", varType, sc2Stream.tell())
+        Logger.Error("WRONG TYPE FOUND, PLEASE ADD IT:", varType)
 
     if not isNode:
         return varTypeB + data
@@ -124,20 +149,19 @@ def GetVariantVector(keyToFind, sc2Stream, dictionaryRes = None):
     if dictionaryRes != None:
         keyToFind = Downgrader.GetKeyHashFromByteArray(dictionaryRes, keyToFind)
 
-    EOF = BinReader.GetEOF(sc2Stream)
+    EOF = BinFile.GetEOF(sc2Stream)
     currPos = sc2Stream.tell()
-    while sc2Stream.read(4) != keyToFind:
+    while sc2Stream.read(len(keyToFind)) != keyToFind:
         if currPos == EOF:
             Logger.Error("DVASSERT: TYPE_VARIANT_VECTOR EOF")
         currPos += 1
         sc2Stream.seek(currPos)
 
     variantTypeList = []
-    if BinReader.ReadInt(sc2Stream, 1) != Downgrader.TYPE_VARIANT_VECTOR:
+    if BinFile.ReadInt(sc2Stream, 1) != Downgrader.TYPE_VARIANT_VECTOR:
         Logger.Error("DVASSERT: TYPE_VARIANT_VECTOR")
 
-    variantNum = BinReader.ReadInt(sc2Stream, 4)
+    variantNum = BinFile.ReadInt(sc2Stream, 4)
     for k in range(variantNum):
         variantTypeList.append(Read(sc2Stream, dictionaryRes, True))
-
     return variantTypeList

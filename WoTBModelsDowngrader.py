@@ -1,4 +1,4 @@
-import BinaryReader as BinReader
+import BinaryFile as BinFile
 import KeyedArchive as KeyedArchive
 import LoggerErrors as Logger
 import VariantType as VariantType
@@ -6,6 +6,11 @@ import VariantType as VariantType
 sc2File = "ST_B1.sc2"
 scgFile = sc2File.replace(".sc2", ".scg")
 outFile = sc2File.replace(".sc2", "_res.sc2")
+
+# Feature to Support new Hierarchy on Olders ResourceEditor
+# If Enabled, Instead of storing all nodes in Variant Vectors
+# We count number of childrens and place nodes right after
+HIERARCHY_SUPPORT = True
 
 TYPE_NONE           =  0
 TYPE_BOOLEAN        =  1
@@ -53,12 +58,12 @@ def TryReadGeometryFile(scgStream):
     if headerSignature != b'SCPG':
         Logger.Error("Wrong HeaderGeom Signature", headerSignature)
         
-    headerVersion = BinReader.ReadInt(scgStream, 4)
+    headerVersion = BinFile.ReadInt(scgStream, 4)
     if headerVersion != 1:
         Logger.Error("Wrong HeaderGeom Version != 1", headerVersion)
 
-    headerPolyNum = BinReader.ReadInt(scgStream, 4)
-    if headerPolyNum != BinReader.ReadInt(scgStream, 4):
+    headerPolyNum = BinFile.ReadInt(scgStream, 4)
+    if headerPolyNum != BinFile.ReadInt(scgStream, 4):
         Logger.Error("Wrong HeaderGeom Number of PolygonGroup Nodes")
 
     polygonGroups = scgStream.read()
@@ -72,13 +77,13 @@ def TryReadSceneHeader(sc2Stream):
     if headerSignature != b'SFV2':
         Logger.Error("Wrong Header Signature:", headerSignature)
         
-    headerVersion = BinReader.ReadInt(sc2Stream, 4)
+    headerVersion = BinFile.ReadInt(sc2Stream, 4)
     if headerVersion > SCENE_FILE_CURRENT_VERSION:
         Logger.Error("Unsupported:", SCENE_FILE_CURRENT_VERSION)
     elif headerVersion < SCENE_FILE_MINIMAL_VERSION:
         Logger.Error("Unsupported:", SCENE_FILE_MINIMAL_VERSION)
 
-    headerNodeNum = BinReader.ReadInt(sc2Stream, 4)
+    headerNodeNum = BinFile.ReadInt(sc2Stream, 4)
     if headerNodeNum == 0:
         Logger.Error("Wrong Number of Hierarchy Nodes == 0")
 
