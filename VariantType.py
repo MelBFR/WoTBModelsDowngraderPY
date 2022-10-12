@@ -14,7 +14,7 @@ def AsInt32(number):
     else:
         Logger.Error("Wrong number type:", type(number))
 
-def Read(sc2Stream, dictionaryRes = None, isNode = False):
+def Read(sc2Stream, dictionaryRes = None):
 
     varTypeB = sc2Stream.read(1)
     varType = int.from_bytes(varTypeB, 'little')
@@ -60,7 +60,9 @@ def Read(sc2Stream, dictionaryRes = None, isNode = False):
                     hierarchyData = eachObjMap[1]
                     eachObjMap[0] = AsString(b"#childrenCount")
                     eachObjMap[1] = AsInt32(eachObjMap[1][1:5])
-        data = KeyedArchive.CreateArchiveFromStringMap(stringMap, isNode)
+                    
+        buildArchive = KeyedArchive.CreateArchiveFromStringMap(stringMap)
+        data = len(buildArchive).to_bytes(4, 'little') + buildArchive
         if hierarchyData != None:
             mem = BinFile.WriteBufferForLoadData("child.bin", hierarchyData)
             mem.read(1)
@@ -141,9 +143,7 @@ def Read(sc2Stream, dictionaryRes = None, isNode = False):
     else:
         Logger.Error("WRONG TYPE FOUND, PLEASE ADD IT:", varType)
 
-    if not isNode:
-        return varTypeB + data
-    return data
+    return varTypeB + data
 
 def GetVariantVector(keyToFind, sc2Stream, dictionaryRes = None):
     if dictionaryRes != None:
@@ -163,5 +163,7 @@ def GetVariantVector(keyToFind, sc2Stream, dictionaryRes = None):
 
     variantNum = BinFile.ReadInt(sc2Stream, 4)
     for k in range(variantNum):
-        variantTypeList.append(Read(sc2Stream, dictionaryRes, True))
+        nodeArchive = KeyedArchive.RemoveArchiveTypeAndSize(Read(sc2Stream, dictionaryRes))
+        # nodeArchive = Read(sc2Stream, dictionaryRes)
+        variantTypeList.append(nodeArchive)
     return variantTypeList

@@ -68,10 +68,12 @@ def Load(sc2Stream, dictionaryRes = None):
         
     Logger.Error("Wrong Archive Version:", archiveVersion, sc2Stream.tell())
 
-def CreateArchiveFromStringMap(stringMap, isNode):
+def CreateArchiveFromStringMap(stringMap):
     archive = b'KA'+(0x0001).to_bytes(2, 'little')+len(stringMap).to_bytes(4, 'little')
     for k in range(len(stringMap)):
         archive += stringMap[k][0] + stringMap[k][1]
-    if not isNode:
-        archive = len(archive).to_bytes(4, 'little') + archive
+    return archive
+
+def RemoveArchiveTypeAndSize(archive):
+    archive = archive[-len(archive) + 5:]
     return archive

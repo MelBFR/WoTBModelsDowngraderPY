@@ -3,7 +3,7 @@ import KeyedArchive as KeyedArchive
 import LoggerErrors as Logger
 import VariantType as VariantType
 
-sc2File = "ST_B1.sc2"
+sc2File = "Leopard1.sc2"
 scgFile = sc2File.replace(".sc2", ".scg")
 outFile = sc2File.replace(".sc2", "_res.sc2")
 
@@ -42,7 +42,7 @@ TYPE_UNKNOWN        = 26
 TYPE_VARIANT_VECTOR = 27
 TYPES_COUNT         = 28
 
-SCENE_FILE_CURRENT_VERSION = 40
+SCENE_FILE_CURRENT_VERSION = 41
 SCENE_FILE_MINIMAL_VERSION = 30
 SCENE_FILE_REBUILD_VERSION = 24
 
