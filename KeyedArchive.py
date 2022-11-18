@@ -3,14 +3,14 @@ import LoggerErrors as Logger
 import VariantType as VariantType
 import WoTBModelsDowngrader as Downgrader
 
-def LoadDictionary(sc2Stream):
+def LoadRegisteredArchive(stream):
     # In case of Dictionary Archives
-    archiveSignature = sc2Stream.read(2)
+    archiveSignature = stream.read(2)
     if archiveSignature != b'KA':
         Logger.Error("Wrong Archive Signature:", archiveSignature)
 
-    archiveVersion = BinFile.ReadInt(sc2Stream, 2)
-    archiveItemNum = BinFile.ReadInt(sc2Stream, 4)
+    archiveVersion = BinFile.ReadInt(stream, 2)
+    archiveItemNum = BinFile.ReadInt(stream, 4)
     if archiveItemNum == 0:
         Logger.Error("Wrong Archive ItemsCount:", archiveItemNum)
 
@@ -20,53 +20,53 @@ def LoadDictionary(sc2Stream):
     dictionaryKeys = []
     dictionaryHash = []
     for i in range(archiveItemNum):
-        stringLen = BinFile.ReadInt(sc2Stream, 2)
-        dictionaryKeys.append(sc2Stream.read(stringLen))
+        stringLen = BinFile.ReadInt(stream, 2)
+        dictionaryKeys.append(stream.read(stringLen))
 
     for i in range(archiveItemNum):
-        dictionaryHash.append(sc2Stream.read(4))
+        dictionaryHash.append(stream.read(4))
     
     return [dictionaryKeys, dictionaryHash]
 
 # While Downgrading Models, Only StringMap Exists !
 # So we Return a StringMap Version of Keyed Archive
-def Load(sc2Stream, dictionaryRes = None):
-    archiveSignature = sc2Stream.read(2)
+def Load(stream, dictionaryRes = None):
+    archiveSignature = stream.read(2)
     if archiveSignature != b'KA':
         Logger.Error("Wrong Archive Signature:", archiveSignature)
 
+    stringMapArchive = []
+
     # In case of Empty Archives
-    archiveVersion = BinFile.ReadInt(sc2Stream, 2)
+    archiveVersion = BinFile.ReadInt(stream, 2)
     if archiveVersion == 0xFF02:
-        return []
+        return stringMapArchive
 
     # In case of Others Archives
-    archiveItemNum = BinFile.ReadInt(sc2Stream, 4)
+    archiveItemNum = BinFile.ReadInt(stream, 4)
     if archiveItemNum == 0:
         Logger.Error("Wrong Archive ItemsCount:", archiveItemNum)
 
     # In case of Hashed Strings Archives
     if archiveVersion == 0x0102:
-        stringMapArchive = []
         for i in range(archiveItemNum):
-            variantKey = Downgrader.GetByteArrayFromKeyHash(dictionaryRes, sc2Stream.read(4))
+            variantKey = Downgrader.GetByteArrayFromKeyHash(dictionaryRes, stream.read(4))
             variantKey = VariantType.AsString(variantKey)
-            variantObj = VariantType.Read(sc2Stream, dictionaryRes)
+            variantObj = VariantType.Read(stream, dictionaryRes)
             stringMapArchive.append([variantKey, variantObj])
 
         return stringMapArchive
 
     # In case of StringMap Archives
     if archiveVersion == 0x0001:
-        stringMapArchive = []
         for i in range(archiveItemNum):
-            variantKey = VariantType.Read(sc2Stream, dictionaryRes)
-            variantObj = VariantType.Read(sc2Stream, dictionaryRes)
+            variantKey = VariantType.Read(stream, dictionaryRes)
+            variantObj = VariantType.Read(stream, dictionaryRes)
             stringMapArchive.append([variantKey, variantObj])
 
         return stringMapArchive
         
-    Logger.Error("Wrong Archive Version:", archiveVersion, sc2Stream.tell())
+    Logger.Error("Wrong Archive Version:", archiveVersion, stream.tell())
 
 def CreateArchiveFromStringMap(stringMap):
     archive = b'KA'+(0x0001).to_bytes(2, 'little')+len(stringMap).to_bytes(4, 'little')
@@ -77,3 +77,8 @@ def CreateArchiveFromStringMap(stringMap):
 def RemoveArchiveTypeAndSize(archive):
     archive = archive[-len(archive) + 5:]
     return archive
+
+def GetArchivesFromVariantVector(variantVector):
+    for i in range(len(variantVector)):
+        variantVector[i] = RemoveArchiveTypeAndSize(variantVector[i])
+    return variantVector

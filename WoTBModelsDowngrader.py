@@ -3,7 +3,7 @@ import KeyedArchive as KeyedArchive
 import LoggerErrors as Logger
 import VariantType as VariantType
 
-sc2File = "Leopard1.sc2"
+sc2File = "41_iceworld_ic.sc2"
 scgFile = sc2File.replace(".sc2", ".scg")
 outFile = sc2File.replace(".sc2", "_res.sc2")
 
@@ -38,11 +38,13 @@ TYPE_INT8           = 22
 TYPE_UINT8          = 23
 TYPE_INT16          = 24
 TYPE_UINT16         = 25
-TYPE_UNKNOWN        = 26
+TYPE_RECT           = 26
 TYPE_VARIANT_VECTOR = 27
-TYPES_COUNT         = 28
+TYPE_QUATERNION     = 28
+TYPE_TRANSFORM      = 29
+TYPES_COUNT         = 30
 
-SCENE_FILE_CURRENT_VERSION = 41
+SCENE_FILE_CURRENT_VERSION = 43
 SCENE_FILE_MINIMAL_VERSION = 30
 SCENE_FILE_REBUILD_VERSION = 24
 
@@ -53,66 +55,71 @@ def GetKeyHashFromByteArray(dictionaryRes, byteArray):
 def GetByteArrayFromKeyHash(dictionaryRes, keyHash):
     return dictionaryRes[0][dictionaryRes[1].index(keyHash)]
 
-def TryReadGeometryFile(scgStream):
-    headerSignature = scgStream.read(4)
+def TryReadGeometryFile(stream):
+    headerSignature = stream.read(4)
     if headerSignature != b'SCPG':
         Logger.Error("Wrong HeaderGeom Signature", headerSignature)
         
-    headerVersion = BinFile.ReadInt(scgStream, 4)
+    headerVersion = BinFile.ReadInt(stream, 4)
     if headerVersion != 1:
         Logger.Error("Wrong HeaderGeom Version != 1", headerVersion)
 
-    headerPolyNum = BinFile.ReadInt(scgStream, 4)
-    if headerPolyNum != BinFile.ReadInt(scgStream, 4):
+    headerPolyNum = BinFile.ReadInt(stream, 4)
+    if headerPolyNum != BinFile.ReadInt(stream, 4):
         Logger.Error("Wrong HeaderGeom Number of PolygonGroup Nodes")
 
-    polygonGroups = scgStream.read()
+    polygonGroups = stream.read()
     return polygonGroups
 
-def ReadSCG(scgStream):
-    return TryReadGeometryFile(scgStream)
+def ReadSCG(stream):
+    return TryReadGeometryFile(stream)
 
-def TryReadSceneHeader(sc2Stream):
-    headerSignature = sc2Stream.read(4)
+def TryReadSceneHeader(stream):
+    headerSignature = stream.read(4)
     if headerSignature != b'SFV2':
         Logger.Error("Wrong Header Signature:", headerSignature)
         
-    headerVersion = BinFile.ReadInt(sc2Stream, 4)
+    headerVersion = BinFile.ReadInt(stream, 4)
     if headerVersion > SCENE_FILE_CURRENT_VERSION:
         Logger.Error("Unsupported:", SCENE_FILE_CURRENT_VERSION)
     elif headerVersion < SCENE_FILE_MINIMAL_VERSION:
         Logger.Error("Unsupported:", SCENE_FILE_MINIMAL_VERSION)
 
-    headerNodeNum = BinFile.ReadInt(sc2Stream, 4)
+    headerNodeNum = BinFile.ReadInt(stream, 4)
     if headerNodeNum == 0:
         Logger.Error("Wrong Number of Hierarchy Nodes == 0")
 
     return headerNodeNum
 
-def TryReadDescriptor(sc2Stream):
-    return sc2Stream.read(24)
+def TryReadDescriptor(stream):
+    return stream.read(24)
 
-def ReadSC2(sc2Stream):
-    headerNodeNum = TryReadSceneHeader(sc2Stream)
-    descriptorBuf = TryReadDescriptor(sc2Stream)
-    dictionaryRes = KeyedArchive.LoadDictionary(sc2Stream)
+def ReadSC2(stream):
+    headerNodeNum = TryReadSceneHeader(stream)
+    descriptorBuf = TryReadDescriptor(stream)
+    dictionaryRes = KeyedArchive.LoadRegisteredArchive(stream)
 
-    dataNodes = VariantType.GetVariantVector(b"#dataNodes", sc2Stream, dictionaryRes)
-    hierarchy = VariantType.GetVariantVector(b"#hierarchy", sc2Stream, dictionaryRes)
+    dataNodes = VariantType.GetVariantVector(b"#dataNodes", stream, dictionaryRes)
+    dataNodes = KeyedArchive.GetArchivesFromVariantVector(dataNodes)
+
+    hierarchy = VariantType.GetVariantVector(b"#hierarchy", stream, dictionaryRes)
+    hierarchy = KeyedArchive.GetArchivesFromVariantVector(hierarchy)
 
     return [dataNodes, hierarchy]
 
-def CreateSceneFile(outStream, receivedNodes, polygonGroups):
-    polygonsGNum = polygonGroups.count(b"PolygonGroup")
-    dataNodesNum = polygonsGNum + len(receivedNodes[0])
-    
+def CreateSceneFile(outStream, receivedNodes, polygonGroups = None):
+    dataNodesNum = len(receivedNodes[0])
+    if polygonGroups != None:
+        dataNodesNum += polygonGroups.count(b"PolygonGroup")
+        
     outStream.write(b"SFV2")
     outStream.write(SCENE_FILE_REBUILD_VERSION.to_bytes(4, 'little'))
     outStream.write(len(receivedNodes[1]).to_bytes(4, 'little'))
     outStream.write(DESCRIPTOR_BUFFER)
     outStream.write(dataNodesNum.to_bytes(4, 'little'))
 
-    outStream.write(polygonGroups)
+    if polygonGroups != None:
+        outStream.write(polygonGroups)
     for eachNode in receivedNodes[0]:
         outStream.write(eachNode)
     for eachNode in receivedNodes[1]:
@@ -120,14 +127,20 @@ def CreateSceneFile(outStream, receivedNodes, polygonGroups):
     outStream.close()
 
 def DowngradeModel():
-    scgStream = open(scgFile, "rb+")
-    sc2Stream = open(sc2File, "rb+")
+    sc2Stream, scgStream, polygonGroups, receivedNodes = None, None, None, None
+
+    if BinFile.IsPathExists(sc2File):
+        sc2Stream = open(sc2File, "rb+")
+        receivedNodes = ReadSC2(sc2Stream)
+        
+    if BinFile.IsPathExists(scgFile):
+        scgStream = open(scgFile, "rb+")
+        polygonGroups = ReadSCG(scgStream)
+
+    if sc2File == None:
+        Logger.Error("Downgrade failed to open file", sc2File)
     
-    polygonGroups = ReadSCG(scgStream)
-    receivedNodes = ReadSC2(sc2Stream)
-
     outStream = open(outFile, "wb")
-
     CreateSceneFile(outStream, receivedNodes, polygonGroups)
 
 if __name__ == '__main__':

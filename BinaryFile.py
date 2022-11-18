@@ -1,8 +1,11 @@
 import tempfile
 import os
 
+def IsPathExists(path):
+    return os.path.exists(path)
+
 memFolder = tempfile.gettempdir() + "\\mem\\"
-if not os.path.exists(memFolder):
+if not IsPathExists(memFolder):
     os.mkdir(memFolder)
 
 def ReadInt(stream, size):
