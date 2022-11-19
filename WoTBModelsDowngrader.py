@@ -4,7 +4,7 @@ import LoggerErrors as Logger
 import VariantType as VariantType
 import HierarchySystem as Hierarchy
 
-sc2File = "M-6-Y.sc2"
+sc2File = "Oth35_PanzerMejai.sc2"
 scgFile = sc2File.replace(".sc2", ".scg")
 outFile = sc2File.replace(".sc2", "_res.sc2")
 
@@ -96,13 +96,19 @@ def TryReadSceneHeader(stream):
 
     return headerNodeNum
 
+def TryReadVersionTags(stream):
+    return KeyedArchive.Load(stream)
+
 def TryReadDescriptor(stream):
-    return stream.read(24)
+    descriptorSize = BinFile.ReadInt(stream, 4)
+    descriptorData = stream.read(descriptorSize)
+    return descriptorData
 
 def ReadSC2(stream):
-    headerNodeNum = TryReadSceneHeader(stream)
-    descriptorBuf = TryReadDescriptor(stream)
-    dictionaryRes = KeyedArchive.LoadRegisteredArchive(stream)
+    headerNodeCount = TryReadSceneHeader(stream)
+    versionTagsData = TryReadVersionTags(stream)
+    descriptorData  = TryReadDescriptor(stream)
+    dictionaryRes   = KeyedArchive.LoadRegisteredArchive(stream)
 
     dataNodes = VariantType.GetVariantVector(b"#dataNodes", stream, dictionaryRes)
     dataNodes = KeyedArchive.GetArchivesFromVariantVector(dataNodes)

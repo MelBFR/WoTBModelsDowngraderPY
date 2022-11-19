@@ -45,7 +45,7 @@ def Load(stream, dictionaryRes = None):
     # In case of Others Archives
     archiveItemNum = BinFile.ReadInt(stream, 4)
     if archiveItemNum == 0:
-        Logger.Error("Wrong Archive ItemsCount:", archiveItemNum)
+        return stringMapArchive
 
     # In case of Hashed Strings Archives
     if archiveVersion == 0x0102:
