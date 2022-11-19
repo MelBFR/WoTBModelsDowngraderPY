@@ -66,7 +66,13 @@ def Load(stream, dictionaryRes = None):
 
         return stringMapArchive
         
-    Logger.Error("Wrong Archive Version:", archiveVersion, stream.tell())
+    Logger.Error("Wrong Archive Version:", [archiveVersion, stream.tell()])
+
+def CreateStringMapFromArchive(archive, dictionaryRes = None):
+    memStream = BinFile.WriteBufferForLoadData(archive)
+    stringMap = Load(memStream, dictionaryRes)
+    memStream.close()
+    return stringMap
 
 def CreateArchiveFromStringMap(stringMap):
     archive = b'KA'+(0x0001).to_bytes(2, 'little')+len(stringMap).to_bytes(4, 'little')
@@ -82,3 +88,26 @@ def GetArchivesFromVariantVector(variantVector):
     for i in range(len(variantVector)):
         variantVector[i] = RemoveArchiveTypeAndSize(variantVector[i])
     return variantVector
+
+def GetUInt32InStringMap(stringMap, bytesKey):
+    for eachObjMap in stringMap:
+        if VariantType.AsString(bytesKey) == eachObjMap[0]:
+            return int.from_bytes(eachObjMap[1][1:5], 'little')
+    return False
+
+def GetVariantInStringMap(stringMap, bytesKey):
+    for eachObjMap in stringMap:
+        if VariantType.AsString(bytesKey) == eachObjMap[0]:
+            return eachObjMap[1]
+    return False
+
+def SetVariantInStringMap(stringMap, bytesKey, variantBytes):
+    stringMap.append([VariantType.AsString(bytesKey), variantBytes])
+    return stringMap
+
+def RemoveKeysInStringMap(stringMap, bytesKey):
+    for eachObjMap in stringMap.copy():
+        if VariantType.AsString(bytesKey) == eachObjMap[0]:
+            stringMap.remove(eachObjMap)
+
+    return stringMap

@@ -14,6 +14,9 @@ def AsInt32(number):
     else:
         Logger.Error("Wrong number type:", type(number))
 
+def AsKeyedArchive(byteArray):
+    return bytes([Downgrader.TYPE_KEYED_ARCHIVE]) + len(byteArray).to_bytes(4, 'little') + byteArray
+
 def Read(stream, dictionaryRes = None):
 
     varType = int.from_bytes(stream.read(1), 'little')
@@ -47,11 +50,7 @@ def Read(stream, dictionaryRes = None):
 
     elif varType == Downgrader.TYPE_KEYED_ARCHIVE:
         oldArchiveSize = stream.read(4)
-        if dictionaryRes != None:
-            stringMap = KeyedArchive.Load(stream, dictionaryRes)
-        else:
-            stringMap = KeyedArchive.Load(stream)
-                    
+        stringMap = KeyedArchive.Load(stream, dictionaryRes)
         archive = KeyedArchive.CreateArchiveFromStringMap(stringMap)
         data = len(archive).to_bytes(4, 'little') + archive
 
@@ -119,7 +118,7 @@ def Read(stream, dictionaryRes = None):
                 data += Read(stream)
     
     else:
-        Logger.Error("WRONG TYPE FOUND, PLEASE ADD IT:", varType)
+        Logger.Error("WRONG TYPE FOUND, PLEASE ADD IT:", [varType, stream.tell()])
 
     return varType.to_bytes(1, 'little') + data
 

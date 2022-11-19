@@ -2,8 +2,9 @@ import BinaryFile as BinFile
 import KeyedArchive as KeyedArchive
 import LoggerErrors as Logger
 import VariantType as VariantType
+import HierarchySystem as Hierarchy
 
-sc2File = "41_iceworld_ic.sc2"
+sc2File = "M-6-Y.sc2"
 scgFile = sc2File.replace(".sc2", ".scg")
 outFile = sc2File.replace(".sc2", "_res.sc2")
 
@@ -11,6 +12,10 @@ outFile = sc2File.replace(".sc2", "_res.sc2")
 # If Enabled, Instead of storing all nodes in Variant Vectors
 # We count number of childrens and place nodes right after
 HIERARCHY_SUPPORT = True
+# Feature to Support new ParticleEmitterNodes by deleting them
+# It needs to be enabled at the same time of HIERARCHY_SUPPORT
+# Basically to also remove the ParticleEffectComponent component
+PARTICLES_SUPPORT = True
 
 TYPE_NONE           =  0
 TYPE_BOOLEAN        =  1
@@ -108,6 +113,11 @@ def ReadSC2(stream):
     return [dataNodes, hierarchy]
 
 def CreateSceneFile(outStream, receivedNodes, polygonGroups = None):
+    if PARTICLES_SUPPORT:
+        for eachNode in receivedNodes[0].copy():
+            if VariantType.AsString(b"ParticleEmitterNode") in eachNode:
+                receivedNodes[0].remove(eachNode)
+
     dataNodesNum = len(receivedNodes[0])
     if polygonGroups != None:
         dataNodesNum += polygonGroups.count(b"PolygonGroup")
@@ -120,13 +130,18 @@ def CreateSceneFile(outStream, receivedNodes, polygonGroups = None):
 
     if polygonGroups != None:
         outStream.write(polygonGroups)
+    # dataNodes
     for eachNode in receivedNodes[0]:
         outStream.write(eachNode)
+    # hierarchy
     for eachNode in receivedNodes[1]:
+        if HIERARCHY_SUPPORT:
+            eachNode = Hierarchy.TransformNewToOldHierarchy(eachNode)
         outStream.write(eachNode)
     outStream.close()
 
 def DowngradeModel():
+    
     sc2Stream, scgStream, polygonGroups, receivedNodes = None, None, None, None
 
     if BinFile.IsPathExists(sc2File):
@@ -142,6 +157,6 @@ def DowngradeModel():
     
     outStream = open(outFile, "wb")
     CreateSceneFile(outStream, receivedNodes, polygonGroups)
-
+    
 if __name__ == '__main__':
     DowngradeModel()
