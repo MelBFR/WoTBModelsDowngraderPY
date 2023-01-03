@@ -1,8 +1,8 @@
 import WoTBModelsDowngrader as Downgrader
-import KeyedArchive as KeyedArchive
-import VariantType as VariantType
 import LoggerErrors as Logger
 import BinaryFile as BinFile
+import KeyedArchive
+import VariantType
 
 HIERARCHY_KEY = b"#hierarchy"
 CHILDRENS_KEY = b"#childrenCount"

@@ -4,7 +4,7 @@ import LoggerErrors as Logger
 import VariantType as VariantType
 import HierarchySystem as Hierarchy
 
-sc2File = "Oth35_PanzerMejai.sc2"
+sc2File = "Tank_Laser.sc2"
 scgFile = sc2File.replace(".sc2", ".scg")
 outFile = sc2File.replace(".sc2", "_res.sc2")
 
@@ -15,50 +15,13 @@ HIERARCHY_SUPPORT = True
 # Feature to Support new ParticleEmitterNodes by deleting them
 # It needs to be enabled at the same time of HIERARCHY_SUPPORT
 # Basically to also remove the ParticleEffectComponent component
-PARTICLES_SUPPORT = True
-
-TYPE_NONE           =  0
-TYPE_BOOLEAN        =  1
-TYPE_INT32          =  2
-TYPE_FLOAT          =  3
-TYPE_STRING         =  4
-TYPE_WIDE_STRING    =  5
-TYPE_BYTE_ARRAY     =  6
-TYPE_UINT32         =  7
-TYPE_KEYED_ARCHIVE  =  8
-TYPE_INT64          =  9
-TYPE_UINT64         = 10
-TYPE_VECTOR2        = 11
-TYPE_VECTOR3        = 12
-TYPE_VECTOR4        = 13
-TYPE_MATRIX2        = 14
-TYPE_MATRIX3        = 15
-TYPE_MATRIX4        = 16
-TYPE_COLOR          = 17
-TYPE_FASTNAME       = 18
-TYPE_AABBOX3        = 19
-TYPE_FILEPATH       = 20
-TYPE_FLOAT64        = 21
-TYPE_INT8           = 22
-TYPE_UINT8          = 23
-TYPE_INT16          = 24
-TYPE_UINT16         = 25
-TYPE_RECT           = 26
-TYPE_VARIANT_VECTOR = 27
-TYPE_QUATERNION     = 28
-TYPE_TRANSFORM      = 29
-TYPES_COUNT         = 30
+PARTICLES_SUPPORT = False
 
 SCENE_FILE_CURRENT_VERSION = 43
 SCENE_FILE_MINIMAL_VERSION = 30
 SCENE_FILE_REBUILD_VERSION = 24
 
 DESCRIPTOR_BUFFER = bytes([0x4b, 0x41, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
-
-def GetKeyHashFromByteArray(dictionaryRes, byteArray):
-    return dictionaryRes[1][dictionaryRes[0].index(byteArray)]
-def GetByteArrayFromKeyHash(dictionaryRes, keyHash):
-    return dictionaryRes[0][dictionaryRes[1].index(keyHash)]
 
 def TryReadGeometryFile(stream):
     headerSignature = stream.read(4)

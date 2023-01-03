@@ -1,7 +1,12 @@
-import BinaryFile as BinFile
-import LoggerErrors as Logger
-import VariantType as VariantType
 import WoTBModelsDowngrader as Downgrader
+import LoggerErrors as Logger
+import BinaryFile as BinFile
+import VariantType
+
+def GetKeyHashFromByteArray(dictionaryRes, byteArray):
+    return dictionaryRes[1][dictionaryRes[0].index(byteArray)]
+def GetByteArrayFromKeyHash(dictionaryRes, keyHash):
+    return dictionaryRes[0][dictionaryRes[1].index(keyHash)]
 
 def LoadRegisteredArchive(stream):
     # In case of Dictionary Archives
@@ -50,7 +55,7 @@ def Load(stream, dictionaryRes = None):
     # In case of Hashed Strings Archives
     if archiveVersion == 0x0102:
         for i in range(archiveItemNum):
-            variantKey = Downgrader.GetByteArrayFromKeyHash(dictionaryRes, stream.read(4))
+            variantKey = GetByteArrayFromKeyHash(dictionaryRes, stream.read(4))
             variantKey = VariantType.AsString(variantKey)
             variantObj = VariantType.Read(stream, dictionaryRes)
             stringMapArchive.append([variantKey, variantObj])
